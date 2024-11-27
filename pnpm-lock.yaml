@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@expressive/react':
+    specifier: ^0.52.1
+    version: 0.52.1(react@18.3.1)
   react:
     specifier: ^18.2.0
     version: 18.3.1
@@ -559,6 +562,19 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+
+  /@expressive/mvc@0.52.1:
+    resolution: {integrity: sha512-Bd1+Qa9BzFJgV89n/GSFz7008aH92fTSN3HPNGjJOlhj15aUx1jaAdY8nkC6Y+2RKLnhvx3sc2YQFaF65+YORA==}
+    dev: false
+
+  /@expressive/react@0.52.1(react@18.3.1):
+    resolution: {integrity: sha512-98QNnjRrQhFbPJP3Ur68kZ6rgi5YIccKIbFUdNEUHyp5VuZ7oPe6WqfETt96BhFA2rWvoji3v3TJBCoeXUE7IQ==}
+    peerDependencies:
+      react: '>=16.8.0 <19.0.0'
+    dependencies:
+      '@expressive/mvc': 0.52.1
+      react: 18.3.1
+    dev: false
 
   /@expressive/vite-plugin@0.2.7(vite@5.4.11):
     resolution: {integrity: sha512-oVl3LtfGj9VxrUzTOb5Qt7ebMkUdN+eoij6xa6tYsen5fwjjV8IY2QKiu43La22J4nL446rq07Cb+acaYQDpkA==}
