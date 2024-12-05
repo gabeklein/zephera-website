@@ -1,19 +1,28 @@
 import Model, { ref, set } from "@expressive/react";
 
+interface Particle {
+  x: number;
+  y: number;
+  velocityX: number;
+  velocityY: number;
+  life: number;
+}
+
 export class AnimateBG extends Model {
   element = ref(this.init);
   context = set<CanvasRenderingContext2D>();
   
-  particles = [] as Particle[];
+  particles = new Set<Particle>();
   width = 0;
   height = 0;
+  speed = 0.2;
 
   particleColor = "";
   particleRadius = 3;
-  particleCount = 60;
-  maxVelocity = 0.5;
-  lineLength = 150;
+  particleCount = 50;
   particleLife = 6;
+  maxLineLength = 150;
+  minLineLength = 90;
 
   init(element: HTMLDivElement) {
     const canvas = document.createElement("canvas");
@@ -21,11 +30,9 @@ export class AnimateBG extends Model {
   
     canvas.style.position = "absolute";
     canvas.style.zIndex = "-1";
+    canvas.style.filter = "blur(1.5px)";
     
-    this.context = canvas.getContext("2d", {
-      alpha: false,
-      antialias: true
-    }) as any;
+    this.context = canvas.getContext("2d")!;
   
     this.context.imageSmoothingEnabled = true;
     this.context.imageSmoothingQuality = 'high';
@@ -52,7 +59,7 @@ export class AnimateBG extends Model {
     onResize();
 
     for (let i = 0; i < this.particleCount; i++)
-      this.particles.push(new Particle(this));
+      this.spawn();
 
     this.draw();
 
@@ -61,113 +68,99 @@ export class AnimateBG extends Model {
     }
   }
 
-  draw() {
-    const { context, particles, lineLength } = this;
+  spawn(){
+    const { speed, particleLife } = this;
 
-    // context.clearRect(0, 0, this.width, this.height);
-    context.fillStyle = "white";
-    context.fillRect(0, 0, this.width, this.height);
-
-    for (const particle of this.particles)
-      particle.update();
-
-    let x1;
-    let y1;
-    let x2;
-    let y2;
-    let length;
-    let opacity;
-
-    for (const p1 of particles) 
-      for (const p2 of particles) {
-        x1 = p1.x;
-        y1 = p1.y;
-        x2 = p2.x;
-        y2 = p2.y;
-
-        length = Math.sqrt(
-          (x2 - x1) ** 2 + 
-          (y2 - y1) ** 2
-        );
-
-        if (length < lineLength) {
-          opacity = 1 - length / lineLength;
-          context.lineWidth = 0.5;
-          context.strokeStyle = this.particleColor.replace(')', `, ${opacity})`);
-          context.beginPath();
-          context.moveTo(x1, y1);
-          context.lineTo(x2, y2);
-          context.closePath();
-          context.stroke();
-        }
-      }
-
-    requestAnimationFrame(this.draw);
-  }
-}
-
-class Particle {
-  velocityX: number;
-  velocityY: number;
-
-  x: number;
-  y: number;
-
-  life: number;
-
-  constructor(private parent: AnimateBG){
-    const maxVelocity = parent.maxVelocity;
-
-    this.velocityX = Math.random() * (maxVelocity * 2) - maxVelocity;
-    this.velocityY = Math.random() * (maxVelocity * 2) - maxVelocity;
-
-    this.x = Math.random() * parent.width;
-    this.y = Math.random() * parent.height;
-    this.life = Math.random() * parent.particleLife * 60;
+    this.particles.add({
+      x: Math.random() * this.width,
+      y: Math.random() * this.height,
+      velocityX: Math.random() * speed * 2 - speed,
+      velocityY: Math.random() * speed * 2 - speed,
+      life: Math.random() * particleLife * 60,
+    });
   }
 
-  update() {
+  update(particle: Particle) {
     const {
-      maxVelocity,
-      particleLife,
+      particleColor,
+      particleRadius,
+      context,
       width,
       height,
-      context,
-      particleRadius,
-      particleColor
-    } = this.parent
+    } = this;
 
-    if (this.life < 1) {
-      this.x = Math.random() * width;
-      this.y = Math.random() * height;
-      this.velocityX = Math.random() * (maxVelocity * 2) - maxVelocity;
-      this.velocityY = Math.random() * (maxVelocity * 2) - maxVelocity;
-      this.life = Math.random() * particleLife * 60;
+    const {
+      x: positionX,
+      y: positionY,
+      velocityX,
+      velocityY
+    } = particle;
+
+    if (particle.life < 1){
+      this.particles.delete(particle);
+      this.spawn();
+      return;
     }
 
-    this.life--;
-
     if (
-      (this.x + this.velocityX > width && this.velocityX > 0) ||
-      (this.x + this.velocityX < 0 && this.velocityX < 0)
+      (velocityX > 0 && positionX + velocityX > width) ||
+      (velocityX < 0 && positionX + velocityX < 0)
     ) {
-      this.velocityX *= -1;
+      particle.velocityX *= -1;
     }
   
     if (
-      (this.y + this.velocityY > height && this.velocityY > 0) ||
-      (this.y + this.velocityY < 0 && this.velocityY < 0)
+      (velocityY > 0 && positionY + velocityY > height) ||
+      (velocityY < 0 && positionY + velocityY < 0)
     ) {
-      this.velocityY *= -1;
+      particle.velocityY *= -1;
     }
 
-    this.x += this.velocityX;
-    this.y += this.velocityY;
+    particle.life--;
+    particle.x += particle.velocityX;
+    particle.y += particle.velocityY;
 
     context.beginPath();
-    context.arc(this.x, this.y, particleRadius, 0, Math.PI * 2);
+    context.arc(particle.x, particle.y, particleRadius, 0, Math.PI * 2);
     context.closePath();
     context.fillStyle = particleColor;
     context.fill();
+  }
+
+  drawLine(p1: Particle, p2: Particle){
+    const { context } = this;
+    const { x: x1, y: y1 } = p1;
+    const { x: x2, y: y2 } = p2;
+
+    length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
+    if (length >= this.maxLineLength || length < this.minLineLength)
+      return;
+
+    const opacity = 1 - length / this.maxLineLength;
+
+    context.lineWidth = 0.5;
+    context.strokeStyle = this.particleColor.replace(')', `, ${opacity})`);
+    context.beginPath();
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.closePath();
+    context.stroke();
+  }
+
+  draw() {
+    const { context, particles } = this;
+
+    context.fillStyle = "white";
+    context.fillRect(0, 0, this.width, this.height);
+
+    for (const particle of particles)
+      this.update(particle);
+
+    for (const p1 of particles) 
+      for (const p2 of particles)
+        this.drawLine(p1, p2);
+
+    requestAnimationFrame(this.draw);
   }
 }
